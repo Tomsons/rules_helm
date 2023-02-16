@@ -1,0 +1,4 @@
+exports_files(
+    ['chart.bzl', 'providers.bzl', 'chart_repo'],
+    visibility = ['//visibility:public'],
+)
