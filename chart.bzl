@@ -73,14 +73,40 @@ data:""".format(
         substitutions = maps_subs
     )
 
+def _gen_outs(ctx, chart_info = None, base_path = [], outs = []):
+    for (path, f) in chart_info.srcs.items():
+        out = ctx.actions.declare_file("/".join(base_path + [chart_info.name, path]))
+        ctx.actions.run_shell(
+            inputs = [f],
+            outputs = [out],
+            command = "mkdir -p {dir} && cp {file} {out}".format(dir = out.dirname, file = f.path, out = out.path)
+        )
+        outs.append(out)
+    return outs
+
+def _recurse_deps(ctx, chart_info = None, base_path = [], outs = []):
+    outs += _gen_outs(ctx, chart_info, base_path, outs)
+    for info in chart_info.deps:
+       outs += _gen_outs(ctx, info, base_path + [chart_info.name, "charts"], outs)
+    return outs
+
 def _chart(ctx):
+    chart_name = ctx.label.name
+    if ctx.attr.chart_name != "":
+        chart_name = ctx.attr.chart_name
     outs = []
     strip_path = _strip_path(ctx.files.srcs)
     subs = _compute_substitutions(ctx, {})
     files = {}
+
     for f in ctx.files.srcs:
-        path = f.path.replace(strip_path, "").replace(ctx.label.package + "/", "")
-        files[path] = f
+        path_arr = []
+        if ctx.attr.prefix != "":
+            path_arr.append(ctx.attr.prefix)
+        path = f.path.replace(strip_path, "")
+        path_arr.append(path)
+        files["/".join(path_arr)] = f
+
     for (path, file) in files.items():
         out = ctx.actions.declare_file(path)
         if path.endswith(".tgz"):
@@ -93,26 +119,21 @@ def _chart(ctx):
             ctx.actions.expand_template(template = file, output = out, substitutions = subs)
         outs.append(out)
         files[path] = out
+
     for d in ctx.attr.deps:
         chart_info = d[ChartInfo]
-        for (path, file) in d[ChartInfo].srcs.items():
-            out_path = "/".join(["charts", chart_info.name, path])
-            out = ctx.actions.declare_file(out_path)
-            ctx.actions.run_shell(
-                inputs = [file],
-                outputs = [out],
-                command = "mkdir -p {dir} && cp {file} {out}".format(dir = out.dirname, file = file.path, out = out.path)
-            )
-            outs.append(out)
-            files[out_path] = out
+        outs += _recurse_deps(ctx, chart_info, ["charts"], [])
+
     return [
         DefaultInfo (
             files = depset(outs),
             executable = _dump_self_shell(ctx)
         ),
         ChartInfo (
-            name = ctx.label.package.split("/").pop(),
+            name = chart_name,
             srcs = files,
+            prefix = ctx.attr.prefix,
+            deps = [d[ChartInfo] for d in ctx.attr.deps],
         ),
     ]
 
@@ -128,9 +149,11 @@ chart = rule (
     implementation = _chart,
     executable = True,
     attrs = {
+        "chart_name": attr.string(default = ""),
         "srcs": attr.label_list(allow_files = True),
         "substitutions": attr.string_dict(default = {}),
         "configmaps": attr.label_list(providers = [ConfigMapInfo]),
+        "prefix": attr.string(default = ""),
         "deps": attr.label_list(default = [], providers = [ChartInfo])
     }
 )
