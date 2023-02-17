@@ -101,9 +101,9 @@ def _chart(ctx):
 
     for f in ctx.files.srcs:
         path_arr = []
-        if ctx.attr.prefix != "":
-            path_arr.append(ctx.attr.prefix)
-        path = f.path.replace(strip_path, "")
+        path = f.path.replace(strip_path, "").replace(ctx.label.package, "")
+        if path.startswith("/"):
+            path = path[1:]
         path_arr.append(path)
         files["/".join(path_arr)] = f
 
@@ -132,7 +132,6 @@ def _chart(ctx):
         ChartInfo (
             name = chart_name,
             srcs = files,
-            prefix = ctx.attr.prefix,
             deps = [d[ChartInfo] for d in ctx.attr.deps],
         ),
     ]
@@ -153,7 +152,6 @@ chart = rule (
         "srcs": attr.label_list(allow_files = True),
         "substitutions": attr.string_dict(default = {}),
         "configmaps": attr.label_list(providers = [ConfigMapInfo]),
-        "prefix": attr.string(default = ""),
         "deps": attr.label_list(default = [], providers = [ChartInfo])
     }
 )

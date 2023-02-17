@@ -13,10 +13,15 @@ def _rules_helm_dependencies_impl(ctx):
         ".",
     ])
     ctx.file("BUILD.bazel", content="""load("@com_github_tomsons_rules_helm//:chart.bzl", "chart")
+filegroup(
+    name = "sources",
+    srcs = glob(["**/*"], exclude = ["BUILD.bazel", "WORKSPACE", "templates/tests/**/*"]),
+    visibility = ["//visibility:public"],
+)
 chart(
     name = "chart",
     chart_name = "{name}",
-    srcs = glob(["**/*"], exclude = ["BUILD.bazel", "WORKSPACE", "templates/tests/**/*"]),
+    srcs = [":sources"],
     visibility = ["//visibility:public"],
 )
     """.format(
