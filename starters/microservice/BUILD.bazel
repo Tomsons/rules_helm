@@ -1,0 +1,5 @@
+filegroup (
+    name = "starter",
+    srcs = glob(["Chart.yaml", "values.yaml", "templates/*.yaml", "templates/*.tpl"]),
+    visibility = ["//visibility:public"],
+)

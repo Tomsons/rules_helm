@@ -124,6 +124,7 @@ def _chart(ctx):
         chart_info = d[ChartInfo]
         outs += _recurse_deps(ctx, chart_info, ["charts"], [])
 
+    print("chart_name: %s" % chart_name)
     return [
         DefaultInfo (
             files = depset(outs),

@@ -1,0 +1,36 @@
+{{- if .Values.ingressRoute.enabled -}}
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ template "<CHARTNAME>.fullname" . }}-http
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    {{- with .Values.ingressRoute.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  labels:
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+    {{- with .Values.ingressRoute.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  entryPoints:
+  {{- range .Values.ingressRoute.entryPoints }}
+  - {{ . }}
+  {{- end }}
+  routes:
+  - match: {{ .Values.ingressRoute.matchRule }}
+    kind: Rule
+    services:
+    - name: api@internal
+      kind: TraefikService
+    {{- with .Values.ingressRoute.middlewares }}
+    middlewares:
+      {{- toYaml . | nindent 6 }}
+    {{- end -}}
+
+  {{- with .Values.ingressRoute.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end -}}

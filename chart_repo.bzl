@@ -9,6 +9,7 @@ def chart_repo(
     charts = [],
     replacements = {},
     inner_deps = {},
+    ignore_files = {},
     ):
 
     deps_bzl = """cat <<EOT >> deps.bzl
@@ -18,6 +19,9 @@ def load_charts():
 """
     for chart in charts:
         chart_name = chart
+        ignore = ""
+        if chart in ignore_files.keys():
+            ignore = ignore_files[chart]
         if chart in replacements.keys():
             chart_name = replacements[chart]
         deps_bzl += """
@@ -25,11 +29,13 @@ def load_charts():
         name = "{chart_name}",
         repository = "{repository}",
         chart_path = "{chart_path}",
+        ignore_files = "{ignore}",
     )
 """.format(
     chart_name = chart_name,
     repository = name,
     chart_path = chart,
+    ignore = ignore,
     )
 
     deps_bzl += "EOT"
